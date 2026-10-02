@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Field Issue Tracker
+Comment=Offline field infrastructure issue reporting
+Exec=PLACEHOLDER/scripts/run-desktop-app.sh
+Icon=field-issue-tracker
+Terminal=false
+Categories=Utility;Office;
+StartupNotify=true
+StartupWMClass=FieldIssueTracker
