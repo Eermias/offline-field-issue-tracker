@@ -1,0 +1,123 @@
+// Central shared database - Prisma Postgres (or any Postgres).
+// Local offline store remains SQLite (see backend/src/db.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CENTRAL_DATABASE_URL")
+}
+
+enum UserRole {
+  employee
+  manager
+}
+
+enum ReportCategory {
+  water_point
+  equipment
+  service_interruption
+  safety
+  maintenance
+  other
+}
+
+enum ReportPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum ReportStatus {
+  draft
+  submitted
+  assigned
+  in_progress
+  resolved
+  rejected
+}
+
+enum HistoryEventType {
+  created
+  status_changed
+  sync_received
+  sync_duplicate
+}
+
+enum StatusRequestState {
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(employee)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  reports      Report[] @relation("ReportAuthor")
+  statusRequests StatusRequest[] @relation("RequestAuthor")
+  reviews      StatusRequest[] @relation("RequestReviewer")
+
+  @@map("users")
+}
+
+model Report {
+  id          String         @id @default(uuid()) @db.Uuid
+  clientId    String         @unique @map("client_id") @db.Uuid
+  category    ReportCategory
+  description String
+  location    String
+  priority    ReportPriority
+  status      ReportStatus   @default(submitted)
+  reportedAt  DateTime       @map("reported_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById String?        @map("created_by") @db.Uuid
+  createdBy   User?          @relation("ReportAuthor", fields: [createdById], references: [id])
+  history     ReportHistory[]
+  statusRequests StatusRequest[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([reportedAt(sort: Desc)])
+  @@index([createdById])
+  @@map("reports")
+}
+
+model ReportHistory {
+  id        String           @id @default(uuid()) @db.Uuid
+  reportId  String           @map("report_id") @db.Uuid
+  eventType HistoryEventType @map("event_type")
+  message   String?
+  metadata  Json             @default("{}")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  report    Report           @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, createdAt])
+  @@map("report_history")
+}
+
+model StatusRequest {
+  id               String             @id @default(uuid()) @db.Uuid
+  reportId         String             @map("report_id") @db.Uuid
+  requestedById    String             @map("requested_by") @db.Uuid
+  requestedStatus  ReportStatus       @map("requested_status")
+  requestStatus    StatusRequestState @default(pending) @map("request_status")
+  reviewedById     String?            @map("reviewed_by") @db.Uuid
+  note             String?
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  report           Report             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  requestedBy      User               @relation("RequestAuthor", fields: [requestedById], references: [id])
+  reviewedBy       User?              @relation("RequestReviewer", fields: [reviewedById], references: [id])
+
+  @@index([reportId, requestStatus])
+  @@map("status_requests")
+}
