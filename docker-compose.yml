@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: field-issue-tracker-db
+    environment:
+      POSTGRES_USER: fieldtracker
+      POSTGRES_PASSWORD: fieldtracker
+      POSTGRES_DB: field_issue_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - field_issue_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldtracker -d field_issue_tracker"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  field_issue_pgdata:

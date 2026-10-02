@@ -1,1 +1,1 @@
-import 'fake-indexeddb/auto';
+start
